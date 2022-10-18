@@ -4,7 +4,7 @@ import numpy as np
 from scipy.signal import welch
 from spectrum import pburg
 
-from hrv.detrend import polynomial_detrend, smoothness_priors
+from hrv.detrend import polynomial_detrend, smoothness_priors, sg_detrend
 from hrv.rri import RRi
 from hrv.utils import (validate_rri, _interpolate_rri)
 
@@ -18,7 +18,7 @@ def time_domain(
     time=None,
     fs=4.0,
     interp_method="linear",
-    kubios_detrend=False
+    detrend=None
 ):
     """
     time_domain(rri)
@@ -29,6 +29,17 @@ def time_domain(
     ----------
     rri : array_like
         sequence containing the RRi series
+    time : array_like, optional
+        Sequence containing the time associated with the RRi series.
+        When not provided time is created from the cumulative sum of the
+        values from the RRi series
+    interp_method : str {'cubic', 'linear'}, optional
+        Interpolation funtion applied to the RRi series. If RRi series
+        is already interpolated this step is skipped. 'cubic' (default),
+        'linear'
+    detrend : str or function, optional
+        Detrend method applied to the RRi series. Defaults to None.
+        If the rri is an RRiDetrend object this step is skipped.
 
     Returns
     -------
@@ -71,8 +82,13 @@ def time_domain(
     if interp_method is not None:
         rri = _interpolate_rri(rri, time, fs, interp_method)
 
-    if kubios_detrend:
-        rri = smoothness_priors(rri, 500)
+    if not rri.detrended and detrend is not None:
+        if detrend == 'kubios' or detrend == 'tarvainen':
+            rri = smoothness_priors(rri, 500)
+        elif detrend == 'polynomial':
+            rri = polynomial_detrend(rri, degree=1)
+        elif detrend == 'sg':
+            rri = sg_detrend(rri)
 
     # TODO: let user choose interval for pnn50 and nn50.
     diff_rri = np.diff(rri)
