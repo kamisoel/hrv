@@ -4,7 +4,7 @@ import numpy as np
 from scipy.signal import welch
 from spectrum import pburg
 
-from hrv.detrend import polynomial_detrend
+from hrv.detrend import polynomial_detrend, smoothness_priors
 from hrv.rri import RRi
 from hrv.utils import (validate_rri, _interpolate_rri)
 
@@ -13,7 +13,13 @@ __all__ = ['time_domain', 'frequency_domain', 'non_linear']
 
 
 @validate_rri
-def time_domain(rri):
+def time_domain(
+    rri,
+    time=None,
+    fs=4.0,
+    interp_method="linear",
+    kubios_detrend=False
+):
     """
     time_domain(rri)
 
@@ -58,6 +64,16 @@ def time_domain(rri):
      'mrri': 1058.7186813186813,
      'mhr': 56.85278105637358}
     """
+    if isinstance(rri, RRi):
+        time = rri.time if time is None else time
+        interp_method = interp_method if not rri.interpolated else None
+
+    if interp_method is not None:
+        rri = _interpolate_rri(rri, time, fs, interp_method)
+
+    if kubios_detrend:
+        rri = smoothness_priors(rri, 500)
+
     # TODO: let user choose interval for pnn50 and nn50.
     diff_rri = np.diff(rri)
     rmssd = np.sqrt(np.mean(diff_rri ** 2))

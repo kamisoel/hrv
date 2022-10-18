@@ -387,11 +387,20 @@ class RRi:
 
 
 class RRiDetrended(RRi):
-    # TODO: add trend as attribute of the instance
-    def __init__(self, rri, time, *args, **kwargs):
+    def __init__(self, rri, trend, time, *args, **kwargs):
+        self.__trend = trend
         detrended = True
         interpolated = kwargs.pop("interpolated", False)
-        super().__init__(rri, time, interpolated=interpolated, detrended=detrended)
+        super().__init__(rri - trend, time, interpolated=interpolated, detrended=detrended)
+
+    @property
+    def trend(self):
+        """Return a numpy array containing the RRi values"""
+        return self.__trend
+
+    def mean(self, *args, **kwargs):
+        """Return the average of the orignal RRi series"""
+        return np.mean(self.rri + self.trend, *args, **kwargs)
 
 
 class RRiDescription(MutableMapping):
@@ -460,7 +469,8 @@ def _validate_rri(rri):
     # TODO: let the RRi be in seconds if the user wants to
     rri = np.array(rri, dtype=np.float64)
 
-    if any(rri <= 0):
+    # detrended rri series can have negative values
+    if not rri.detrended and any(rri <= 0):
         raise ValueError("rri series can only have positive values")
 
     # Use RRi series median value to check if it is in seconds or miliseconds
