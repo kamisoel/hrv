@@ -470,8 +470,9 @@ def _validate_rri(rri):
     rri = np.array(rri, dtype=np.float64)
 
     # detrended rri series can have negative values
-    if not rri.detrended and any(rri <= 0):
-        raise ValueError("rri series can only have positive values")
+    if not isinstance(rri, RRiDetrended):
+        if any(rri <= 0):
+            raise ValueError("rri series can only have positive values")
 
     # Use RRi series median value to check if it is in seconds or miliseconds
     if np.median(rri) < 10:
